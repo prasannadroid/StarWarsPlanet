@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">StarWarsPlanet</string>
+    <string name="planet_list">Planet List</string>
+    <string name="planet_details">Planet Details</string>
+    <string name="back_arrow">Back</string>
+    <string name="planet_image">Planet Image</string>
+</resources>
