@@ -35,6 +35,7 @@ import com.assesment.starwarsplanet.features.planet.presentation.viewmodels.Plan
 
 @Composable
 fun PlanetListScreen(navController: NavController) {
+    // scaffold provides a basic layout structure with a top bar
     Scaffold(
         topBar = {
             MyActionBar(stringResource(id = R.string.planet_list))
@@ -88,13 +89,16 @@ fun PlanetListContainer(navController: NavController, paddingValues: PaddingValu
                 }
         }
 
+        // display the planet items
         LazyColumn(state = lazyListState) {
             // get result or empty
             val planetResult = planet?.results.orEmpty()
             // display items
-            itemsIndexed(planetResult) { index, planetItems ->
+            itemsIndexed(
+                items = planetResult,
+                key = { _, planet -> planet.name }) { index, planetItems ->
                 PlanetItem(planetItems, index, onItemClick = {
-                    // make route
+                    // make route for details screen
                     val route = PlanetDetailsRoute.createRoute(
                         planetItems.name.formatValue(),
                         planetItems.orbitalPeriod.formatValue(),
@@ -122,6 +126,7 @@ fun PlanetListContainer(navController: NavController, paddingValues: PaddingValu
 
 @Composable
 fun ProgressIndicator() {
+    // display a centered circular loading indicator
     Box(
         modifier = Modifier
             .fillMaxWidth()

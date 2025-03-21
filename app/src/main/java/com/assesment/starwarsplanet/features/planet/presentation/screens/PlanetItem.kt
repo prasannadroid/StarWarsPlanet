@@ -52,7 +52,7 @@ fun PlanetItem(planetResult: PlanetResult, index: Int, onItemClick: () -> Unit) 
         ) {
             // image holder composable
             PlanetImage(index = index)
-
+            // planet name
             Text(
                 modifier = Modifier.padding(start = 15.dp, top = 10.dp),
                 text = planetResult.name,
@@ -60,7 +60,7 @@ fun PlanetItem(planetResult: PlanetResult, index: Int, onItemClick: () -> Unit) 
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
-
+            // climate
             Text(
                 modifier = Modifier.padding(start = 15.dp, top = 6.dp),
                 text = planetResult.climate,
@@ -73,6 +73,7 @@ fun PlanetItem(planetResult: PlanetResult, index: Int, onItemClick: () -> Unit) 
 
 @Composable
 fun PlanetImage(index: Int) {
+    // make image section in the card view
     AsyncImage(
         modifier = Modifier
             .fillMaxWidth()
