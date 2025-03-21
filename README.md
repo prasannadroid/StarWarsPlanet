@@ -11,9 +11,9 @@ detailed information about the selected planet.
 
 ## Features
 
-1 Splash
-2 Planet Listing screen
-3 Planet Details screen
-4 Pagination
-5 Offline feature
-6 Light Dark theme support
+- Splash
+- Planet Listing screen
+- Planet Details screen
+- Pagination
+- Offline feature
+- Light/Dark theme support
