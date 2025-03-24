@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.assesment.starwarsplanet.TestHelper.Companion.createPlanet
 import com.assesment.starwarsplanet.core.remote.api.APIResult
 import com.assesment.starwarsplanet.features.planet.data.dto.Planet
+import com.assesment.starwarsplanet.features.planet.data.repository.PlanetRepositoryImpl
+import com.assesment.starwarsplanet.features.planet.data.repository.RemoteDataRepositoryImpl
 import com.assesment.starwarsplanet.features.planet.domain.repository.PlanetRepository
 import com.assesment.starwarsplanet.features.planet.domain.usecase.PlanetListUseCase
 import com.assesment.starwarsplanet.features.planet.domain.usecase.UpdatePlanetListUseCase
@@ -24,14 +26,15 @@ class PlanetUseCaseTest {
 
     // Use case instances
     private lateinit var updatePlanetListUseCase: UpdatePlanetListUseCase
+
     private lateinit var planetListUseCase: PlanetListUseCase
 
-    // AutoCloseable instance to release resources
     private lateinit var closeable: AutoCloseable
 
-    // Mock dependencies
     @Mock
     private lateinit var planetRepository: PlanetRepository
+
+    private val pageNumber = 1
 
     @Before
     fun setUp() {
@@ -50,13 +53,13 @@ class PlanetUseCaseTest {
     @Test
     fun `invoke should get planet results successfully`() = runTest {
         // Arrange: Setup test data and mock API response
-        val pageNumber = 1
+
         val planet =
             Planet(count = 0, results = listOf(createPlanet("Earth")), next = "", previous = "")
         val apiResult = APIResult.Success(planet)
 
         // Mock the repository response
-        `when`(planetRepository.getRemotePlanets(pageNumber)).thenReturn(flowOf(apiResult))
+        `when`(planetRepository.getPlanets(pageNumber)).thenReturn(flowOf(apiResult))
 
         // Act: Call the use case
         val resultFlow = planetListUseCase.invoke(pageNumber)
@@ -73,11 +76,10 @@ class PlanetUseCaseTest {
     @Test
     fun `invoke should get planet Error`() = runTest {
         // Arrange: Setup test data and mock API error response
-        val pageNumber = 1
         val apiResult = APIResult.Error(Throwable(""))
 
         // Mock the repository response with an error
-        `when`(planetRepository.getRemotePlanets(pageNumber)).thenReturn(flowOf(apiResult))
+        `when`(planetRepository.getPlanets(pageNumber)).thenReturn(flowOf(apiResult))
 
         // Act: Call the use case within a coroutine scope
         runBlocking {

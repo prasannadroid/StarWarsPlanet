@@ -8,11 +8,12 @@ import com.assesment.starwarsplanet.core.remote.api.APIResult
 import com.assesment.starwarsplanet.core.remote.api.APIService
 import com.assesment.starwarsplanet.core.remote.response.PlanetResponse
 import com.assesment.starwarsplanet.core.services.NetworkService
-import com.assesment.starwarsplanet.features.planet.data.repository.PlanetRepositoryImpl
 import com.assesment.starwarsplanet.features.planet.data.dto.Planet
 import com.assesment.starwarsplanet.features.planet.data.mapper.ResponseMapper
-import com.assesment.starwarsplanet.features.planet.domain.repository.PlanetRepository
-import kotlinx.coroutines.flow.flow
+import com.assesment.starwarsplanet.features.planet.data.repository.LocalDataRepositoryImpl
+import com.assesment.starwarsplanet.features.planet.data.repository.PlanetRepositoryImpl
+import com.assesment.starwarsplanet.features.planet.data.repository.RemoteDataRepositoryImpl
+import com.assesment.starwarsplanet.features.planet.domain.repository.LocalDataRepository
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -22,7 +23,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
 import retrofit2.Response
@@ -31,7 +31,12 @@ class PlanetRepositoryTest {
 
     private lateinit var closeable: AutoCloseable
 
-    // Mock dependencies
+    private lateinit var remoteDataRepository: RemoteDataRepositoryImpl
+
+    @Mock
+    private lateinit var localDataRepository: LocalDataRepository
+
+    @Mock
     private lateinit var planetRepository: PlanetRepositoryImpl
 
     @Mock
@@ -52,14 +57,29 @@ class PlanetRepositoryTest {
     @Mock
     private lateinit var networkService: NetworkService
 
+    @Mock
+    private lateinit var planetWithResults: PlanetWithResults
+
     private val pageNumber = 1
 
     @Before
     fun setUp() {
         // Initialize mocks before running tests
         closeable = MockitoAnnotations.openMocks(this)
+
+
+        remoteDataRepository =
+            RemoteDataRepositoryImpl(apiService, localDataRepository, responseMapper)
+
+        localDataRepository = LocalDataRepositoryImpl(localDaoService)
+
         planetRepository =
-            PlanetRepositoryImpl(apiService, localDaoService, responseMapper, networkService)
+            PlanetRepositoryImpl(
+                localDataRepository,
+                remoteDataRepository,
+                responseMapper,
+                networkService
+            )
     }
 
     @After
@@ -78,7 +98,7 @@ class PlanetRepositoryTest {
             `when`(responseMapper.mapToPlanet(planetResponse)).thenReturn(planet)
 
             // Act: Call the method under test
-            val resultFlow = planetRepository.getRemotePlanets(pageNumber)
+            val resultFlow = remoteDataRepository.getRemotePlanets(pageNumber)
 
             // Assert: Verify the success result and emitted data
             resultFlow.test {
@@ -100,7 +120,7 @@ class PlanetRepositoryTest {
             `when`(apiService.getAllPlanets(pageNumber)).thenReturn(apiResponse)
 
             // Act: Call the method under test
-            val resultFlow = planetRepository.getRemotePlanets(pageNumber)
+            val resultFlow = remoteDataRepository.getRemotePlanets(pageNumber)
 
             // Assert: Verify that an error result is emitted
             resultFlow.test {
@@ -121,7 +141,7 @@ class PlanetRepositoryTest {
         `when`(responseMapper.mapToPlanet(planetResponse)).thenReturn(null)
 
         // Act: Call the method under test
-        val resultFlow = planetRepository.getRemotePlanets(pageNumber)
+        val resultFlow = remoteDataRepository.getRemotePlanets(pageNumber)
 
         // Assert: Verify that a mapping error result is emitted
         resultFlow.test {
@@ -143,7 +163,7 @@ class PlanetRepositoryTest {
         `when`(apiService.getAllPlanets(pageNumber)).thenThrow(exception)
 
         // Act: Call the method under test
-        val result = planetRepository.getRemotePlanets(pageNumber).toList()
+        val result = remoteDataRepository.getRemotePlanets(pageNumber).toList()
 
         // Assert: Verify that an error result is emitted
         assert(result.first() is APIResult.Error)
@@ -200,5 +220,52 @@ class PlanetRepositoryTest {
         // Assert: Ensure the result is an error because next page is requested while offline
         assertTrue(result.first() is APIResult.Error)
     }
+
+    @Test
+    fun `getRemotePlanets should emit APIResult Success when remote data is fetched successfully`() =
+        runTest {
+            // Arrange
+
+            // Arrange: Mock successful API response but mapping failure
+            val apiResponse = Response.success(planetResponse)
+            `when`(networkService.isInternetAvailable()).thenReturn(true)
+            `when`(apiService.getAllPlanets(pageNumber)).thenReturn(apiResponse)
+            `when`(responseMapper.mapToPlanet(planetResponse)).thenReturn(planet)
+
+            // Act: Call the method under test
+            val resultFlow = planetRepository.getPlanets(pageNumber)
+
+            // Assert: Verify the success result and emitted data
+            resultFlow.test {
+                val result = awaitItem()
+                assertTrue(result is APIResult.Success)
+                assertEquals(planet, (result as APIResult.Success).data)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `getRemotePlanets should emit APIResult Error when remote data fetch fails`() =
+        runTest {
+            // Arrange
+
+            val errorMessage = "Not Found"
+            val apiResponse =
+                Response.error<PlanetResponse>(404, errorMessage.toResponseBody(null))
+
+            `when`(networkService.isInternetAvailable()).thenReturn(true)
+            `when`(apiService.getAllPlanets(pageNumber)).thenReturn(apiResponse)
+
+            // Act: Call the method under test
+            val resultFlow = planetRepository.getPlanets(pageNumber)
+
+            // Assert: Verify that an error result is emitted
+            resultFlow.test {
+                val result = awaitItem()
+                assertTrue(result is APIResult.Error)
+                assertEquals("Planets Not Found", (result as APIResult.Error).exception.message)
+                awaitComplete()
+            }
+        }
 
 }
